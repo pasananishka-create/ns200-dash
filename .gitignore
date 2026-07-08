@@ -24,5 +24,13 @@ app/android/key.properties
 Thumbs.db
 *.bak
 
+# Temp project files
+temp_project/
+*.log
+btsnoop_*.log
+
 # Assets
 app/assets/fonts/*.ttf
+
+# Screenshots
+screenshot*.png
