@@ -31,7 +31,6 @@ btsnoop_*.log
 META-INF/
 
 # Assets
-app/assets/fonts/*.ttf
 
 # Screenshots
 screenshot*.png
