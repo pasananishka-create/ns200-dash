@@ -28,6 +28,7 @@ Thumbs.db
 temp_project/
 *.log
 btsnoop_*.log
+META-INF/
 
 # Assets
 app/assets/fonts/*.ttf
