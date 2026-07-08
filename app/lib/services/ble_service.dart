@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../models/bike_data.dart';
@@ -45,10 +44,12 @@ class BleService {
       await FlutterBluePlus.startScan(timeout: timeout);
       await Future.delayed(const Duration(milliseconds: 500));
 
-      await for (final scanResult in FlutterBluePlus.scanResults) {
-        if (scanResult.device.platformName == targetDeviceName ||
-            (scanResult.advertisementData.localName?.toLowerCase().contains('pulsar') ?? false)) {
-          results.add(scanResult);
+      await for (final scanResultList in FlutterBluePlus.scanResults) {
+        for (final scanResult in scanResultList) {
+          if (scanResult.device.platformName == targetDeviceName ||
+              (scanResult.advertisementData.localName?.toLowerCase().contains('pulsar') ?? false)) {
+            results.add(scanResult);
+          }
         }
       }
     } finally {
@@ -64,7 +65,7 @@ class BleService {
       _device = device;
       await device.connect(timeout: const Duration(seconds: 30));
 
-      _connectionSubscription = device.onConnectionStateChanged.listen((state) {
+      _connectionSubscription = device.connectionState.listen((state) {
         _connectionState = state;
         _connectionStateController.add(state);
       });

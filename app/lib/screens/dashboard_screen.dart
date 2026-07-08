@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/bike_provider.dart';
-import '../models/bike_data.dart';
 import '../widgets/rpm_gauge.dart';
 import '../widgets/speed_display.dart';
 import '../widgets/gear_indicator.dart';

@@ -95,7 +95,6 @@ class _RpmGaugePainter extends CustomPainter {
 
   void _drawArc(Canvas canvas, Offset center, double radius) {
     const startAngle = -225 * math.pi / 180;
-    const endAngle = 45 * math.pi / 180;
     const totalAngle = 270 * math.pi / 180;
 
     // Background arc
