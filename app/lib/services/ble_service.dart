@@ -47,7 +47,7 @@ class BleService {
       await for (final scanResultList in FlutterBluePlus.scanResults) {
         for (final scanResult in scanResultList) {
           if (scanResult.device.platformName == targetDeviceName ||
-              (scanResult.advertisementData.localName?.toLowerCase().contains('pulsar') ?? false)) {
+              (scanResult.advertisementData.advName.toLowerCase().contains('pulsar'))) {
             results.add(scanResult);
           }
         }
