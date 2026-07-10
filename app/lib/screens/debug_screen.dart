@@ -287,6 +287,7 @@ class DebugScreen extends StatelessWidget {
   }
 
   Widget _buildDataLog(BikeProvider provider) {
+    final data = provider.currentData;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -298,16 +299,49 @@ class DebugScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Current Parsed Data',
+          const Text('Raw BLE Data',
+            style: TextStyle(color: Color(0xFFFFEB3B), fontWeight: FontWeight.w600, fontSize: 14)),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFFFEB3B).withOpacity(0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data.rawHex.isEmpty ? '(awaiting data)' : data.rawHex,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFFFEB3B),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${data.rawBytes.length} bytes',
+                  style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Decoded Fields (protocol unknown)',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
           const SizedBox(height: 12),
-          _buildDataRow('RPM', '${provider.currentData.rpm}'),
-          _buildDataRow('Speed', '${provider.currentData.speed} km/h'),
-          _buildDataRow('Gear', '${provider.currentData.gear}'),
-          _buildDataRow('Fuel Level', '${(provider.currentData.fuelLevel * 100).toStringAsFixed(0)}%'),
-          _buildDataRow('Engine Temp', '${provider.currentData.engineTemp.toStringAsFixed(1)}°C'),
-          _buildDataRow('Instant FE', '${provider.currentData.instantFuelEco.toStringAsFixed(1)} km/l'),
-          _buildDataRow('Distance to Empty', '${provider.currentData.distanceToEmpty} km'),
+          _buildDataRow('RPM', '${data.rpm}'),
+          _buildDataRow('Speed', '${data.speed} km/h'),
+          _buildDataRow('Gear', '${data.gear}'),
+          _buildDataRow('Fuel Level', '${(data.fuelLevel * 100).toStringAsFixed(0)}%'),
+          _buildDataRow('Engine Temp', '${data.engineTemp.toStringAsFixed(1)}°C'),
+          _buildDataRow('Instant FE', '${data.instantFuelEco.toStringAsFixed(1)} km/l'),
+          _buildDataRow('Distance to Empty', '${data.distanceToEmpty} km'),
         ],
       ),
     );

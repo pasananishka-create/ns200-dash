@@ -199,19 +199,35 @@ class DashboardScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFF00E676).withOpacity(0.3)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 8, height: 8,
-            decoration: const BoxDecoration(
-              color: Color(0xFF00E676), shape: BoxShape.circle,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 8, height: 8,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF00E676), shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Connected to ${provider.bleService.device?.platformName ?? "Bike"}',
+                style: const TextStyle(color: Color(0xFF00E676), fontSize: 13),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
+          const SizedBox(height: 6),
           Text(
-            'Connected to ${provider.bleService.device?.platformName ?? "Bike"}',
-            style: const TextStyle(color: Color(0xFF00E676), fontSize: 13),
+            provider.currentData.rawHex.isEmpty
+                ? 'Waiting for data…'
+                : 'RAW: ${provider.currentData.rawHex}',
+            style: TextStyle(
+              fontFamily: 'monospace',
+              color: Colors.white.withOpacity(0.5),
+              fontSize: 11,
+            ),
           ),
         ],
       ),

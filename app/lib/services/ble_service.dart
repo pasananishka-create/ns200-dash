@@ -169,19 +169,14 @@ class BleService {
   BikeData? _parseBikeData(List<int> data) {
     if (data.isEmpty) return null;
 
-    try {
-      // TODO: Reverse engineer actual byte encoding
-      // For now, parse raw bytes as best-effort
-      // This will be updated once we decode the protocol
-      return BikeData(
-        rpm: data.length > 1 ? (data[0] << 8) | data[1] : 0,
-        speed: data.length > 2 ? data[2] : 0,
-        gear: data.length > 3 ? data[3] : 0,
-        timestamp: DateTime.now(),
-      );
-    } catch (e) {
-      return null;
-    }
+    // TODO: Reverse engineer actual byte encoding.
+    // Raw bytes are captured in BikeData.rawBytes so they can be viewed
+    // on the debug screen. Use the debug screen to correlate raw byte
+    // values with the bike's physical display to decode the protocol.
+    return BikeData(
+      rawBytes: data,
+      timestamp: DateTime.now(),
+    );
   }
 
   Future<void> sendCommand(List<int> command) async {

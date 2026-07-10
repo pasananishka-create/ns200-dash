@@ -9,6 +9,7 @@ class BikeData {
   final double engineTemp;
   final int voltage;
   final DateTime timestamp;
+  final List<int> rawBytes;
 
   BikeData({
     this.rpm = 0,
@@ -21,7 +22,11 @@ class BikeData {
     this.engineTemp = 0,
     this.voltage = 0,
     DateTime? timestamp,
+    this.rawBytes = const [],
   }) : timestamp = timestamp ?? DateTime.now();
+
+  String get rawHex =>
+      rawBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
 
   BikeData copyWith({
     int? rpm,
@@ -33,6 +38,7 @@ class BikeData {
     int? distanceToEmpty,
     double? engineTemp,
     int? voltage,
+    List<int>? rawBytes,
   }) {
     return BikeData(
       rpm: rpm ?? this.rpm,
@@ -45,6 +51,7 @@ class BikeData {
       engineTemp: engineTemp ?? this.engineTemp,
       voltage: voltage ?? this.voltage,
       timestamp: DateTime.now(),
+      rawBytes: rawBytes ?? this.rawBytes,
     );
   }
 
