@@ -22,6 +22,7 @@ class BikeProvider extends ChangeNotifier {
   Timer? _pollTimer;
   String _scanMessage = '';
   final List<RawLogEntry> _rawDataLog = [];
+  final List<BikeData> _allCharData = [];
 
   BikeData get currentData => _currentData;
   ConnectionStatus get connectionStatus => _connectionStatus;
@@ -31,6 +32,7 @@ class BikeProvider extends ChangeNotifier {
   bool get isTripActive => _activeTripId != null;
   String get scanMessage => _scanMessage;
   List<RawLogEntry> get rawDataLog => _rawDataLog;
+  List<BikeData> get allCharData => _allCharData;
 
   void _logRawData(BikeData data) {
     _rawDataLog.insert(0, RawLogEntry(data.rawHex, data.rawBytes.length, DateTime.now()));
@@ -38,7 +40,6 @@ class BikeProvider extends ChangeNotifier {
       _rawDataLog.removeRange(100, _rawDataLog.length);
     }
   }
-
 
   BleService get bleService => _bleService;
 
@@ -48,7 +49,6 @@ class BikeProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Check Bluetooth is on
       _scanMessage = 'Checking Bluetooth…';
       notifyListeners();
       final btOn = await _bleService.isBluetoothOn();
@@ -59,13 +59,11 @@ class BikeProvider extends ChangeNotifier {
         return;
       }
 
-      // 2. Scan for ALL nearby BLE devices (flutter_blue_plus handles permission request)
       _scanMessage = 'Scanning for nearby BLE devices…';
       notifyListeners();
       final results = await _bleService.scanForDevices(timeout: const Duration(seconds: 15));
       _discoveredDevices.addAll(results);
 
-      // 3. If we found our target bike, auto-connect
       final bike = results.cast<ScanResult?>().firstWhere(
         (r) => r != null && BleService.isTargetDevice(r),
         orElse: () => null,
@@ -109,7 +107,6 @@ class BikeProvider extends ChangeNotifier {
   }
 
   void _startDataPolling() {
-    // Listen to connection state changes (handle unexpected disconnects)
     _connectionStateSub?.cancel();
     _connectionStateSub = _bleService.connectionStateStream.listen((state) {
       if (state == BluetoothConnectionState.disconnected &&
@@ -120,7 +117,6 @@ class BikeProvider extends ChangeNotifier {
       }
     });
 
-    // Listen to BLE notification stream for real-time data
     _dataSubscription?.cancel();
     _dataSubscription = _bleService.dataStream.listen((data) {
       _currentData = data;
@@ -131,16 +127,22 @@ class BikeProvider extends ChangeNotifier {
       }
     });
 
-    // Periodic read polling as fallback (for characteristics without notify)
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
-      final data = await _bleService.readBikeData();
-      if (data != null) {
-        _currentData = data;
-        _logRawData(data);
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      final allData = await _bleService.readAllBikeData();
+      if (allData.isNotEmpty) {
+        _currentData = allData.first;
+        _allCharData
+          ..clear()
+          ..addAll(allData);
+        for (final d in allData) {
+          _logRawData(d);
+        }
         notifyListeners();
         if (_activeTripId != null) {
-          await _tripService.recordDataPoint(_activeTripId!, data);
+          for (final d in allData) {
+            await _tripService.recordDataPoint(_activeTripId!, d);
+          }
         }
       }
     });

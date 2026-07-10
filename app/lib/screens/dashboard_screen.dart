@@ -24,36 +24,38 @@ class DashboardScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   _buildConnectionStatus(provider),
                   const SizedBox(height: 16),
-                  _buildRawDataDisplay(provider),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    height: 280,
-                    child: RpmGauge(rpm: provider.currentData.rpm),
-                  ),
-                  const SizedBox(height: 16),
-                  SpeedDisplay(speed: provider.currentData.speed),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GearIndicator(
-                          gear: provider.currentData.gear,
+                  if (provider.connectionStatus == ConnectionStatus.connected &&
+                      provider.allCharData.isNotEmpty)
+                    _buildAllCharData(provider),
+                  if (provider.connectionStatus == ConnectionStatus.connected) ...[
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 280,
+                      child: RpmGauge(rpm: provider.currentData.rpm),
+                    ),
+                    const SizedBox(height: 16),
+                    SpeedDisplay(speed: provider.currentData.speed),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GearIndicator(gear: provider.currentData.gear),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildInfoCard(
-                          'Engine Temp',
-                          '${provider.currentData.engineTemp.toStringAsFixed(1)}°C',
-                          Icons.thermostat,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildInfoCard(
+                            'Engine Temp',
+                            '${provider.currentData.engineTemp.toStringAsFixed(1)}°C',
+                            Icons.thermostat,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  FuelInfo(data: provider.currentData),
-                  const SizedBox(height: 16),
-                  _buildTripControls(context, provider),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    FuelInfo(data: provider.currentData),
+                    const SizedBox(height: 16),
+                    _buildTripControls(context, provider),
+                  ],
                   const SizedBox(height: 24),
                 ],
               ),
@@ -193,7 +195,6 @@ class DashboardScreen extends StatelessWidget {
       );
     }
 
-    // Connected
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
       decoration: BoxDecoration(
@@ -236,6 +237,73 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildAllCharData(BikeProvider provider) {
+    final chars = provider.allCharData;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFEB3B).withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.wifi_tethering, size: 14, color: Color(0xFFFFEB3B)),
+              const SizedBox(width: 6),
+              const Text('LIVE RAW DATA',
+                style: TextStyle(
+                  color: Color(0xFFFFEB3B), fontSize: 11, fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                )),
+              const Spacer(),
+              Text('${chars.length} chars',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 10)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...chars.asMap().entries.map((entry) {
+            final i = entry.key + 1;
+            final d = entry.value;
+            final lines = _formatHexLines(d.rawHex, 8);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Char $i  (${d.rawBytes.length}B)',
+                    style: TextStyle(
+                      fontFamily: 'monospace', fontSize: 9,
+                      color: Colors.white.withValues(alpha: 0.4),
+                    )),
+                  ...lines.map((line) => Text(line,
+                    style: const TextStyle(
+                      fontFamily: 'monospace', fontSize: 13,
+                      color: Color(0xFFFFEB3B), height: 1.3,
+                    ))),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  List<String> _formatHexLines(String hex, int groupSize) {
+    if (hex.isEmpty) return ['(empty)'];
+    final parts = hex.split(' ');
+    final lines = <String>[];
+    for (int i = 0; i < parts.length; i += groupSize) {
+      final end = i + groupSize > parts.length ? parts.length : i + groupSize;
+      lines.add(parts.sublist(i, end).join(' '));
+    }
+    return lines;
+  }
+
   Widget _buildInfoCard(String label, String value, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -258,54 +326,6 @@ class DashboardScreen extends StatelessWidget {
           Text(label,
             style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.5)),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRawDataDisplay(BikeProvider provider) {
-    final data = provider.currentData;
-    if (data.rawBytes.isEmpty) return const SizedBox.shrink();
-    final hex = data.rawHex;
-    final parts = hex.split(' ');
-    final lines = <String>[];
-    for (int i = 0; i < parts.length; i += 8) {
-      lines.add(parts.sublist(i, i + 8 > parts.length ? parts.length : i + 8).join(' '));
-    }
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFFEB3B).withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.wifi_tethering, size: 14, color: Color(0xFFFFEB3B)),
-              const SizedBox(width: 6),
-              const Text('LIVE RAW DATA',
-                style: TextStyle(
-                  color: Color(0xFFFFEB3B), fontSize: 11, fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                )),
-              const Spacer(),
-              Text('${data.rawBytes.length}B',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 10)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ...lines.map((line) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 1),
-            child: Text(line,
-              style: const TextStyle(
-                fontFamily: 'monospace', fontSize: 13,
-                color: Color(0xFFFFEB3B), height: 1.3,
-              )),
-          )),
         ],
       ),
     );

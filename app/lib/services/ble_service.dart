@@ -12,7 +12,7 @@ class BleService {
   final List<_CharListener> _charListeners = [];
 
   List<BluetoothService>? _cachedServices;
-  int _preferredReadCharIndex = 0;
+  final List<_WorkingChar> _workingReadableChars = [];
 
   final _dataStreamController = StreamController<BikeData>.broadcast();
   final _connectionStateController = StreamController<BluetoothConnectionState>.broadcast();
@@ -25,7 +25,6 @@ class BleService {
 
   BluetoothDevice? get device => _device;
 
-  /// Return cached services, or discover once if not yet cached.
   Future<List<BluetoothService>> getServices() async {
     if (_cachedServices != null) return _cachedServices!;
     if (_device == null) return [];
@@ -37,7 +36,6 @@ class BleService {
     }
   }
 
-  /// Check if a scan result matches our target bike name/pattern
   static bool isTargetDevice(ScanResult r) {
     if (r.device.platformName.isNotEmpty &&
         r.device.platformName.toLowerCase() == targetDeviceName) {
@@ -50,7 +48,6 @@ class BleService {
     return false;
   }
 
-  /// Check if Bluetooth is currently enabled (with timeout).
   Future<bool> isBluetoothOn() async {
     try {
       final state = await FlutterBluePlus.adapterState
@@ -62,7 +59,6 @@ class BleService {
     }
   }
 
-  /// Scan for ALL nearby BLE devices, stopping early if [targetDeviceName] is found.
   Future<List<ScanResult>> scanForDevices({Duration timeout = const Duration(seconds: 15)}) async {
     _isScanning = true;
     final results = <ScanResult>[];
@@ -111,10 +107,10 @@ class BleService {
         _connectionStateController.add(state);
         if (state == BluetoothConnectionState.disconnected) {
           _cachedServices = null;
+          _workingReadableChars.clear();
         }
       });
 
-      // Discover services once and cache
       await getServices();
       await _setupNotifications();
       return true;
@@ -127,7 +123,6 @@ class BleService {
     final services = await getServices();
     if (services.isEmpty) return;
 
-    // Cancel any previous notification listeners
     for (final cl in _charListeners) {
       await cl.sub?.cancel();
     }
@@ -152,7 +147,6 @@ class BleService {
     }
   }
 
-  /// Read a specific characteristic by service+char UUID.
   Future<BikeData?> readCharacteristic(String serviceUuid, String charUuid) async {
     if (_device == null || !isConnected) return null;
     try {
@@ -171,47 +165,50 @@ class BleService {
     return null;
   }
 
-  /// Read the preferred readable characteristic (stick to one to avoid
-  /// slow re-discovery of which chars work). Wraps result in BikeData.
-  Future<BikeData?> readBikeData() async {
-    if (_device == null || !isConnected) return null;
+  /// Read all characteristics known to return data. On first call,
+  /// probes every readable characteristic and caches the working ones.
+  Future<List<BikeData>> readAllBikeData() async {
+    final results = <BikeData>[];
+    if (_device == null || !isConnected) return results;
 
     try {
       final services = await getServices();
 
-      // Build a flat list of all readable chars
-      final allReadable = <({String svc, String char})>[];
+      // If we already know which chars work, just read those
+      if (_workingReadableChars.isNotEmpty) {
+        for (final wc in _workingReadableChars) {
+          try {
+            final svc = services.firstWhere((s) => s.uuid.toString() == wc.svcUuid);
+            final char = svc.characteristics.firstWhere((c) => c.uuid.toString() == wc.charUuid);
+            final value = await char.read();
+            results.add(BikeData(rawBytes: value, timestamp: DateTime.now()));
+          } catch (_) {
+          }
+        }
+        return results;
+      }
+
+      // First time: probe all readable characteristics
       for (var svc in services) {
         final svcId = svc.uuid.toString();
         for (var char in svc.characteristics) {
-          if (char.properties.read) {
-            allReadable.add((svc: svcId, char: char.uuid.toString()));
+          if (!char.properties.read) continue;
+          try {
+            final value = await char.read();
+            if (value.isNotEmpty) {
+              _workingReadableChars.add(_WorkingChar(svcId, char.uuid.toString()));
+              results.add(BikeData(rawBytes: value, timestamp: DateTime.now()));
+            }
+          } catch (_) {
           }
-        }
-      }
-      if (allReadable.isEmpty) return null;
-
-      // Try the preferred index, then cycle through others
-      for (int i = 0; i < allReadable.length; i++) {
-        final idx = (_preferredReadCharIndex + i) % allReadable.length;
-        final target = allReadable[idx];
-        try {
-          final svc = services.firstWhere((s) => s.uuid.toString() == target.svc);
-          final char = svc.characteristics.firstWhere((c) => c.uuid.toString() == target.char);
-          final value = await char.read();
-          if (value.isNotEmpty) {
-            _preferredReadCharIndex = idx;
-            return _parseBikeData(value);
-          }
-        } catch (_) {
         }
       }
     } catch (_) {
     }
-    return null;
+    return results;
   }
 
-  /// Read ALL readable characteristics and return a list of results.
+  /// Read ALL readable characteristics (no caching).
   Future<List<({String svc, String char, List<int> data})>> readAllCharacteristics() async {
     final out = <({String svc, String char, List<int> data})>[];
     if (_device == null || !isConnected) return out;
@@ -237,10 +234,7 @@ class BleService {
 
   BikeData? _parseBikeData(List<int> data) {
     if (data.isEmpty) return null;
-    return BikeData(
-      rawBytes: data,
-      timestamp: DateTime.now(),
-    );
+    return BikeData(rawBytes: data, timestamp: DateTime.now());
   }
 
   Future<void> sendCommand(List<int> command) async {
@@ -270,6 +264,7 @@ class BleService {
     _charListeners.clear();
     await _device?.disconnect();
     _cachedServices = null;
+    _workingReadableChars.clear();
     _device = null;
     _connectionState = BluetoothConnectionState.disconnected;
     _connectionStateController.add(BluetoothConnectionState.disconnected);
@@ -290,4 +285,10 @@ class _CharListener {
   final String characteristicUuid;
   final StreamSubscription? sub;
   _CharListener(this.characteristicUuid, this.sub);
+}
+
+class _WorkingChar {
+  final String svcUuid;
+  final String charUuid;
+  _WorkingChar(this.svcUuid, this.charUuid);
 }
