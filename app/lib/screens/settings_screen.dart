@@ -63,6 +63,16 @@ class SettingsScreen extends StatelessWidget {
               label: 'Scan for Bike',
               onTap: () => provider.startScan(),
             ),
+            if (provider.scanMessage.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  provider.scanMessage,
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12, height: 1.4),
+                ),
+              ),
+            ],
             if (provider.discoveredDevices.isNotEmpty) ...[
               const SizedBox(height: 12),
               const Text(

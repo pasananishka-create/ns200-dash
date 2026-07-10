@@ -45,17 +45,21 @@ class BleService {
     return false;
   }
 
-  /// Check if Bluetooth is currently enabled.
+  /// Check if Bluetooth is currently enabled (with timeout).
   Future<bool> isBluetoothOn() async {
     try {
-      final state = await FlutterBluePlus.adapterState.first;
+      final state = await FlutterBluePlus.adapterState
+          .timeout(const Duration(seconds: 5))
+          .first;
       return state == BluetoothAdapterState.on;
     } catch (_) {
+      // timeout or stream error – BT is off or unavailable
       return false;
     }
   }
 
   /// Scan for ALL nearby BLE devices, stopping early if [targetDeviceName] is found.
+  /// Uses LOW_LATENCY scan mode for best discovery on Android.
   /// Returns the full list of discovered devices (not filtered).
   Future<List<ScanResult>> scanForDevices({Duration timeout = const Duration(seconds: 15)}) async {
     _isScanning = true;
@@ -65,7 +69,7 @@ class BleService {
     Timer? timer;
 
     try {
-      await FlutterBluePlus.startScan();
+      await FlutterBluePlus.startScan(androidScanMode: AndroidScanMode.lowLatency);
 
       sub = FlutterBluePlus.scanResults.listen((list) {
         for (final r in list) {
@@ -85,6 +89,8 @@ class BleService {
       });
 
       await completer.future;
+    } catch (e) {
+      // scan failed (e.g. permission denied) – return whatever we have
     } finally {
       timer?.cancel();
       await sub?.cancel();

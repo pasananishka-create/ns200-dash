@@ -19,6 +19,7 @@ class BikeProvider extends ChangeNotifier {
   int? _activeTripId;
   StreamSubscription? _dataSubscription;
   Timer? _pollTimer;
+  String _scanMessage = '';
 
   BikeData get currentData => _currentData;
   ConnectionStatus get connectionStatus => _connectionStatus;
@@ -26,6 +27,7 @@ class BikeProvider extends ChangeNotifier {
   Trip? get activeTrip => _activeTrip;
   List<Trip> get trips => _trips;
   bool get isTripActive => _activeTripId != null;
+  String get scanMessage => _scanMessage;
 
   BleService get bleService => _bleService;
 
@@ -36,14 +38,19 @@ class BikeProvider extends ChangeNotifier {
 
     try {
       // 1. Check Bluetooth is on
+      _scanMessage = 'Checking Bluetooth…';
+      notifyListeners();
       final btOn = await _bleService.isBluetoothOn();
       if (!btOn) {
+        _scanMessage = 'Bluetooth is off. Turn it on and try again.';
         _connectionStatus = ConnectionStatus.disconnected;
         notifyListeners();
         return;
       }
 
       // 2. Scan for ALL nearby BLE devices (flutter_blue_plus handles permission request)
+      _scanMessage = 'Scanning for nearby BLE devices…';
+      notifyListeners();
       final results = await _bleService.scanForDevices(timeout: const Duration(seconds: 15));
       _discoveredDevices.addAll(results);
 
@@ -54,12 +61,22 @@ class BikeProvider extends ChangeNotifier {
       );
 
       if (bike != null) {
+        _scanMessage = 'Connecting to ${bike.device.platformName}…';
+        notifyListeners();
         await connectToDevice(bike.device);
+        _scanMessage = '';
       } else {
+        if (results.isEmpty) {
+          _scanMessage = 'No BLE devices found nearby. Check that Bluetooth is on and try again.';
+        } else {
+          _scanMessage = 'Found ${results.length} device(s), but none matched "${BleService.targetDeviceName}".'
+              ' Tap a device below to connect manually.';
+        }
         _connectionStatus = ConnectionStatus.disconnected;
         notifyListeners();
       }
     } catch (e) {
+      _scanMessage = 'Error: ${e.toString()}';
       _connectionStatus = ConnectionStatus.disconnected;
       notifyListeners();
     }
