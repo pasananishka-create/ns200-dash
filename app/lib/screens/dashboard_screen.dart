@@ -24,6 +24,8 @@ class DashboardScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   _buildConnectionStatus(provider),
                   const SizedBox(height: 16),
+                  _buildRawDataDisplay(provider),
+                  const SizedBox(height: 16),
                   SizedBox(
                     height: 280,
                     child: RpmGauge(rpm: provider.currentData.rpm),
@@ -256,6 +258,54 @@ class DashboardScreen extends StatelessWidget {
           Text(label,
             style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.5)),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRawDataDisplay(BikeProvider provider) {
+    final data = provider.currentData;
+    if (data.rawBytes.isEmpty) return const SizedBox.shrink();
+    final hex = data.rawHex;
+    final parts = hex.split(' ');
+    final lines = <String>[];
+    for (int i = 0; i < parts.length; i += 8) {
+      lines.add(parts.sublist(i, i + 8 > parts.length ? parts.length : i + 8).join(' '));
+    }
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFEB3B).withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.wifi_tethering, size: 14, color: Color(0xFFFFEB3B)),
+              const SizedBox(width: 6),
+              const Text('LIVE RAW DATA',
+                style: TextStyle(
+                  color: Color(0xFFFFEB3B), fontSize: 11, fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                )),
+              const Spacer(),
+              Text('${data.rawBytes.length}B',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 10)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...lines.map((line) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 1),
+            child: Text(line,
+              style: const TextStyle(
+                fontFamily: 'monospace', fontSize: 13,
+                color: Color(0xFFFFEB3B), height: 1.3,
+              )),
+          )),
         ],
       ),
     );

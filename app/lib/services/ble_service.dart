@@ -11,6 +11,9 @@ class BleService {
   StreamSubscription? _connectionSubscription;
   final List<_CharListener> _charListeners = [];
 
+  List<BluetoothService>? _cachedServices;
+  int _preferredReadCharIndex = 0;
+
   final _dataStreamController = StreamController<BikeData>.broadcast();
   final _connectionStateController = StreamController<BluetoothConnectionState>.broadcast();
 
@@ -22,11 +25,13 @@ class BleService {
 
   BluetoothDevice? get device => _device;
 
-  /// Get the latest discovered services, or null if not connected yet.
+  /// Return cached services, or discover once if not yet cached.
   Future<List<BluetoothService>> getServices() async {
+    if (_cachedServices != null) return _cachedServices!;
     if (_device == null) return [];
     try {
-      return await _device!.discoverServices();
+      _cachedServices = await _device!.discoverServices();
+      return _cachedServices!;
     } catch (_) {
       return [];
     }
@@ -53,14 +58,11 @@ class BleService {
           .first;
       return state == BluetoothAdapterState.on;
     } catch (_) {
-      // timeout or stream error – BT is off or unavailable
       return false;
     }
   }
 
   /// Scan for ALL nearby BLE devices, stopping early if [targetDeviceName] is found.
-  /// Uses LOW_LATENCY scan mode for best discovery on Android.
-  /// Returns the full list of discovered devices (not filtered).
   Future<List<ScanResult>> scanForDevices({Duration timeout = const Duration(seconds: 15)}) async {
     _isScanning = true;
     final results = <ScanResult>[];
@@ -78,7 +80,6 @@ class BleService {
             results.add(r);
           }
         }
-        // Early stop as soon as we spot our target bike
         if (results.any(isTargetDevice)) {
           if (!completer.isCompleted) completer.complete();
         }
@@ -89,8 +90,7 @@ class BleService {
       });
 
       await completer.future;
-    } catch (e) {
-      // scan failed (e.g. permission denied) – return whatever we have
+    } catch (_) {
     } finally {
       timer?.cancel();
       await sub?.cancel();
@@ -109,22 +109,23 @@ class BleService {
       _connectionSubscription = device.connectionState.listen((state) {
         _connectionState = state;
         _connectionStateController.add(state);
+        if (state == BluetoothConnectionState.disconnected) {
+          _cachedServices = null;
+        }
       });
 
-      await _setupNotifications(device);
+      // Discover services once and cache
+      await getServices();
+      await _setupNotifications();
       return true;
     } catch (e) {
       return false;
     }
   }
 
-  Future<void> _setupNotifications(BluetoothDevice device) async {
-    List<BluetoothService> services;
-    try {
-      services = await device.discoverServices();
-    } catch (_) {
-      return;
-    }
+  Future<void> _setupNotifications() async {
+    final services = await getServices();
+    if (services.isEmpty) return;
 
     // Cancel any previous notification listeners
     for (final cl in _charListeners) {
@@ -145,17 +146,17 @@ class BleService {
             });
             _charListeners.add(_CharListener(char.uuid.toString(), sub));
           } catch (_) {
-            // This characteristic doesn't support notify enable — skip it
           }
         }
       }
     }
   }
 
+  /// Read a specific characteristic by service+char UUID.
   Future<BikeData?> readCharacteristic(String serviceUuid, String charUuid) async {
     if (_device == null || !isConnected) return null;
     try {
-      final services = await _device!.discoverServices();
+      final services = await getServices();
       for (var svc in services) {
         if (svc.uuid.toString() == serviceUuid) {
           for (var char in svc.characteristics) {
@@ -170,39 +171,72 @@ class BleService {
     return null;
   }
 
+  /// Read the preferred readable characteristic (stick to one to avoid
+  /// slow re-discovery of which chars work). Wraps result in BikeData.
   Future<BikeData?> readBikeData() async {
     if (_device == null || !isConnected) return null;
 
     try {
-      List<BluetoothService> services = await _device!.discoverServices();
+      final services = await getServices();
 
-      // Try all readable characteristics across all services
-      for (var service in services) {
-        for (var char in service.characteristics) {
+      // Build a flat list of all readable chars
+      final allReadable = <({String svc, String char})>[];
+      for (var svc in services) {
+        final svcId = svc.uuid.toString();
+        for (var char in svc.characteristics) {
           if (char.properties.read) {
-            try {
-              List<int> value = await char.read();
-              final data = _parseBikeData(value);
-              if (data != null) return data;
-            } catch (_) {
-              // skip characteristics that fail to read
-            }
+            allReadable.add((svc: svcId, char: char.uuid.toString()));
           }
         }
       }
-    } catch (e) {
-      return null;
+      if (allReadable.isEmpty) return null;
+
+      // Try the preferred index, then cycle through others
+      for (int i = 0; i < allReadable.length; i++) {
+        final idx = (_preferredReadCharIndex + i) % allReadable.length;
+        final target = allReadable[idx];
+        try {
+          final svc = services.firstWhere((s) => s.uuid.toString() == target.svc);
+          final char = svc.characteristics.firstWhere((c) => c.uuid.toString() == target.char);
+          final value = await char.read();
+          if (value.isNotEmpty) {
+            _preferredReadCharIndex = idx;
+            return _parseBikeData(value);
+          }
+        } catch (_) {
+        }
+      }
+    } catch (_) {
     }
     return null;
   }
 
+  /// Read ALL readable characteristics and return a list of results.
+  Future<List<({String svc, String char, List<int> data})>> readAllCharacteristics() async {
+    final out = <({String svc, String char, List<int> data})>[];
+    if (_device == null || !isConnected) return out;
+
+    try {
+      final services = await getServices();
+      for (var svc in services) {
+        final svcId = svc.uuid.toString();
+        for (var char in svc.characteristics) {
+          if (char.properties.read) {
+            try {
+              final value = await char.read();
+              out.add((svc: svcId, char: char.uuid.toString(), data: value));
+            } catch (_) {
+            }
+          }
+        }
+      }
+    } catch (_) {
+    }
+    return out;
+  }
+
   BikeData? _parseBikeData(List<int> data) {
     if (data.isEmpty) return null;
-
-    // TODO: Reverse engineer actual byte encoding.
-    // Raw bytes are captured in BikeData.rawBytes so they can be viewed
-    // on the debug screen. Use the debug screen to correlate raw byte
-    // values with the bike's physical display to decode the protocol.
     return BikeData(
       rawBytes: data,
       timestamp: DateTime.now(),
@@ -213,16 +247,14 @@ class BleService {
     if (_device == null || !isConnected) return;
 
     try {
-      List<BluetoothService> services = await _device!.discoverServices();
-
+      final services = await getServices();
       for (var service in services) {
         for (var char in service.characteristics) {
           if (char.properties.write) {
             try {
               await char.write(command);
-              return; // sent on the first writable char
+              return;
             } catch (_) {
-              // try the next writable char
             }
           }
         }
@@ -237,6 +269,7 @@ class BleService {
     }
     _charListeners.clear();
     await _device?.disconnect();
+    _cachedServices = null;
     _device = null;
     _connectionState = BluetoothConnectionState.disconnected;
     _connectionStateController.add(BluetoothConnectionState.disconnected);

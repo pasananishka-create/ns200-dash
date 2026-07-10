@@ -21,6 +21,7 @@ class BikeProvider extends ChangeNotifier {
   StreamSubscription? _connectionStateSub;
   Timer? _pollTimer;
   String _scanMessage = '';
+  final List<RawLogEntry> _rawDataLog = [];
 
   BikeData get currentData => _currentData;
   ConnectionStatus get connectionStatus => _connectionStatus;
@@ -29,6 +30,15 @@ class BikeProvider extends ChangeNotifier {
   List<Trip> get trips => _trips;
   bool get isTripActive => _activeTripId != null;
   String get scanMessage => _scanMessage;
+  List<RawLogEntry> get rawDataLog => _rawDataLog;
+
+  void _logRawData(BikeData data) {
+    _rawDataLog.insert(0, RawLogEntry(data.rawHex, data.rawBytes.length, DateTime.now()));
+    if (_rawDataLog.length > 100) {
+      _rawDataLog.removeRange(100, _rawDataLog.length);
+    }
+  }
+
 
   BleService get bleService => _bleService;
 
@@ -114,6 +124,7 @@ class BikeProvider extends ChangeNotifier {
     _dataSubscription?.cancel();
     _dataSubscription = _bleService.dataStream.listen((data) {
       _currentData = data;
+      _logRawData(data);
       notifyListeners();
       if (_activeTripId != null) {
         _tripService.recordDataPoint(_activeTripId!, data);
@@ -122,10 +133,11 @@ class BikeProvider extends ChangeNotifier {
 
     // Periodic read polling as fallback (for characteristics without notify)
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
       final data = await _bleService.readBikeData();
       if (data != null) {
         _currentData = data;
+        _logRawData(data);
         notifyListeners();
         if (_activeTripId != null) {
           await _tripService.recordDataPoint(_activeTripId!, data);
@@ -180,4 +192,11 @@ class BikeProvider extends ChangeNotifier {
     _bleService.dispose();
     super.dispose();
   }
+}
+
+class RawLogEntry {
+  final String hex;
+  final int length;
+  final DateTime timestamp;
+  RawLogEntry(this.hex, this.length, this.timestamp);
 }
