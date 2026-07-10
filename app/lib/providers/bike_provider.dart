@@ -37,8 +37,12 @@ class BikeProvider extends ChangeNotifier {
     final results = await _bleService.scanForBike(timeout: const Duration(seconds: 15));
     _discoveredDevices.addAll(results);
 
-    _connectionStatus = ConnectionStatus.disconnected;
-    notifyListeners();
+    if (results.isNotEmpty) {
+      await connectToDevice(results.first.device);
+    } else {
+      _connectionStatus = ConnectionStatus.disconnected;
+      notifyListeners();
+    }
   }
 
   Future<bool> connectToDevice(BluetoothDevice device) async {

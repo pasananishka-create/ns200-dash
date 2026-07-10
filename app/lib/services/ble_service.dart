@@ -32,27 +32,38 @@ class BleService {
 
   BluetoothDevice? get device => _device;
 
-  Future<void> init() async {
-    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
-  }
-
   Future<List<ScanResult>> scanForBike({Duration timeout = const Duration(seconds: 15)}) async {
     _isScanning = true;
-    List<ScanResult> results = [];
+    final results = <ScanResult>[];
+    final completer = Completer<void>();
+    StreamSubscription? sub;
+    Timer? timer;
 
     try {
-      await FlutterBluePlus.startScan(timeout: timeout);
-      await Future.delayed(const Duration(milliseconds: 500));
+      await FlutterBluePlus.startScan();
 
-      await for (final scanResultList in FlutterBluePlus.scanResults) {
-        for (final scanResult in scanResultList) {
-          if (scanResult.device.platformName == targetDeviceName ||
-              (scanResult.advertisementData.advName.toLowerCase().contains('pulsar'))) {
-            results.add(scanResult);
+      sub = FlutterBluePlus.scanResults.listen((list) {
+        for (final r in list) {
+          if (r.device.platformName == targetDeviceName ||
+              r.advertisementData.advName.toLowerCase().contains('pulsar')) {
+            if (!results.contains(r)) {
+              results.add(r);
+            }
           }
         }
-      }
+        if (results.any((r) => r.device.platformName == targetDeviceName)) {
+          if (!completer.isCompleted) completer.complete();
+        }
+      });
+
+      timer = Timer(timeout, () {
+        if (!completer.isCompleted) completer.complete();
+      });
+
+      await completer.future;
     } finally {
+      timer?.cancel();
+      await sub?.cancel();
       await FlutterBluePlus.stopScan();
       _isScanning = false;
     }
