@@ -20,6 +20,7 @@ class BikeProvider extends ChangeNotifier {
   StreamSubscription? _dataSubscription;
   StreamSubscription? _connectionStateSub;
   Timer? _pollTimer;
+  bool _pollingActive = false;
   String _scanMessage = '';
   final List<RawLogEntry> _rawDataLog = [];
   final List<BikeData> _allCharData = [];
@@ -127,8 +128,14 @@ class BikeProvider extends ChangeNotifier {
       }
     });
 
+    _pollingActive = true;
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+    _scheduleNextPoll();
+  }
+
+  void _scheduleNextPoll() {
+    if (!_pollingActive || _connectionStatus != ConnectionStatus.connected) return;
+    _pollTimer = Timer(const Duration(milliseconds: 500), () async {
       final allData = await _bleService.readAllBikeData();
       if (allData.isNotEmpty) {
         _currentData = allData.first;
@@ -145,6 +152,7 @@ class BikeProvider extends ChangeNotifier {
           }
         }
       }
+      _scheduleNextPoll();
     });
   }
 
@@ -176,6 +184,7 @@ class BikeProvider extends ChangeNotifier {
   }
 
   Future<void> disconnect() async {
+    _pollingActive = false;
     _pollTimer?.cancel();
     _connectionStateSub?.cancel();
     if (_activeTripId != null) {
@@ -188,6 +197,7 @@ class BikeProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _pollingActive = false;
     _pollTimer?.cancel();
     _dataSubscription?.cancel();
     _connectionStateSub?.cancel();
