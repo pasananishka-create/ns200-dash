@@ -146,12 +146,16 @@ class BleService {
     try {
       List<BluetoothService> services = await _device!.discoverServices();
 
+      // Try all readable characteristics across all services
       for (var service in services) {
-        if (service.uuid.toString() == serviceTiSensor) {
-          for (var char in service.characteristics) {
-            if (char.uuid.toString() == charTiData && char.properties.read) {
+        for (var char in service.characteristics) {
+          if (char.properties.read) {
+            try {
               List<int> value = await char.read();
-              return _parseBikeData(value);
+              final data = _parseBikeData(value);
+              if (data != null) return data;
+            } catch (_) {
+              // skip characteristics that fail to read
             }
           }
         }

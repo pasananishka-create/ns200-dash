@@ -98,6 +98,17 @@ class BikeProvider extends ChangeNotifier {
   }
 
   void _startDataPolling() {
+    // Listen to BLE notification stream for real-time data
+    _dataSubscription?.cancel();
+    _dataSubscription = _bleService.dataStream.listen((data) {
+      _currentData = data;
+      notifyListeners();
+      if (_activeTripId != null) {
+        _tripService.recordDataPoint(_activeTripId!, data);
+      }
+    });
+
+    // Periodic read polling as fallback (for characteristics without notify)
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       final data = await _bleService.readBikeData();
