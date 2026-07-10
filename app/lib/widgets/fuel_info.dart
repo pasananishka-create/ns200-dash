@@ -13,7 +13,7 @@ class FuelInfo extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,19 +34,19 @@ class FuelInfo extends StatelessWidget {
               Expanded(
                 child: _buildFuelStat(
                   'Instant',
-                  '${data.instantFuelEco.toStringAsFixed(1)}',
+                  data.instantFuelEco.toStringAsFixed(1),
                   'km/l',
                 ),
               ),
-              Container(width: 1, height: 40, color: Colors.white.withOpacity(0.05)),
+              Container(width: 1, height: 40, color: Colors.white.withValues(alpha: 0.05)),
               Expanded(
                 child: _buildFuelStat(
                   'Average',
-                  '${data.avgFuelEco.toStringAsFixed(1)}',
+                  data.avgFuelEco.toStringAsFixed(1),
                   'km/l',
                 ),
               ),
-              Container(width: 1, height: 40, color: Colors.white.withOpacity(0.05)),
+              Container(width: 1, height: 40, color: Colors.white.withValues(alpha: 0.05)),
               Expanded(
                 child: _buildFuelStat(
                   'Range',
@@ -76,7 +76,7 @@ class FuelInfo extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text('$label ($unit)',
-          style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.4)),
+          style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.4)),
         ),
       ],
     );
@@ -84,7 +84,7 @@ class FuelInfo extends StatelessWidget {
 
   Widget _buildFuelBar(double level) {
     final clampedLevel = level.clamp(0, 1);
-    final segments = 8;
+    const segments = 8;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,7 +103,7 @@ class FuelInfo extends StatelessWidget {
                 margin: const EdgeInsets.symmetric(horizontal: 2),
                 height: 6,
                 decoration: BoxDecoration(
-                  color: filled ? fillColor.withOpacity(0.8) : Colors.white.withOpacity(0.05),
+                  color: filled ? fillColor.withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -114,8 +114,8 @@ class FuelInfo extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('E', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 10)),
-            Text('F', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 10)),
+            Text('E', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 10)),
+            Text('F', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 10)),
           ],
         ),
       ],

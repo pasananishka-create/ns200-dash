@@ -45,12 +45,12 @@ class _TripScreenState extends State<TripScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.route, size: 64, color: Colors.white.withOpacity(0.1)),
+                            Icon(Icons.route, size: 64, color: Colors.white.withValues(alpha: 0.1)),
                             const SizedBox(height: 16),
                             Text(
                               'No trips yet',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.3),
+                                color: Colors.white.withValues(alpha: 0.3),
                                 fontSize: 18,
                               ),
                             ),
@@ -58,7 +58,7 @@ class _TripScreenState extends State<TripScreen> {
                             Text(
                               'Connect to your bike and start recording',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 fontSize: 14,
                               ),
                             ),
@@ -88,14 +88,14 @@ class _TripScreenState extends State<TripScreen> {
 
   Widget _buildTripCard(BuildContext context, Trip trip, BikeProvider provider) {
     final dateFormat = DateFormat('MMM dd, yyyy HH:mm');
-    final speedColor = Colors.white;
+    const speedColor = Colors.white;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         children: [
@@ -161,9 +161,9 @@ class _TripScreenState extends State<TripScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF1744).withOpacity(0.1),
+                        color: const Color(0xFFFF1744).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFFF1744).withOpacity(0.2)),
+                        border: Border.all(color: const Color(0xFFFF1744).withValues(alpha: 0.2)),
                       ),
                       child: const Row(
                         children: [
@@ -196,7 +196,7 @@ class _TripScreenState extends State<TripScreen> {
             ),
           ),
           Text(label,
-            style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.4)),
+            style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.4)),
           ),
         ],
       ),
@@ -215,7 +215,7 @@ class _TripScreenState extends State<TripScreen> {
           drawVerticalLine: false,
           horizontalInterval: 20,
           getDrawingHorizontalLine: (value) => FlLine(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             strokeWidth: 1,
           ),
         ),
@@ -231,7 +231,7 @@ class _TripScreenState extends State<TripScreen> {
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: const Color(0xFFFF1744).withOpacity(0.1),
+              color: const Color(0xFFFF1744).withValues(alpha: 0.1),
             ),
           ),
         ],

@@ -54,7 +54,7 @@ class _SpeedDisplayState extends State<SpeedDisplay> with SingleTickerProviderSt
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -75,7 +75,7 @@ class _SpeedDisplayState extends State<SpeedDisplay> with SingleTickerProviderSt
               Text(
                 'km/h',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withValues(alpha: 0.3),
                   fontSize: 12,
                   letterSpacing: 3,
                 ),
@@ -119,7 +119,7 @@ class _SpeedDisplayState extends State<SpeedDisplay> with SingleTickerProviderSt
               ),
             ),
             Text(label,
-              style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.3)),
+              style: TextStyle(fontSize: 9, color: Colors.white.withValues(alpha: 0.3)),
             ),
           ],
         ),

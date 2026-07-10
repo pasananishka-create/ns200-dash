@@ -12,7 +12,7 @@ class GearIndicator extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         children: [
@@ -36,7 +36,7 @@ class GearIndicator extends StatelessWidget {
           Text(
             'GEAR',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.3),
+              color: Colors.white.withValues(alpha: 0.3),
               fontSize: 11,
               letterSpacing: 2,
             ),
@@ -52,7 +52,7 @@ class GearIndicator extends StatelessWidget {
                 height: 6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isActive ? const Color(0xFFFF1744) : Colors.white.withOpacity(0.1),
+                  color: isActive ? const Color(0xFFFF1744) : Colors.white.withValues(alpha: 0.1),
                 ),
               );
             }),

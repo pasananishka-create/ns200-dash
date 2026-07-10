@@ -102,9 +102,9 @@ class DashboardScreen extends StatelessWidget {
       duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         shape: BoxShape.circle,
-        border: Border.all(color: color.withOpacity(0.5), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
       ),
       child: Icon(icon, color: color, size: 24),
     );
@@ -123,7 +123,7 @@ class DashboardScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFFF1744).withOpacity(0.3),
+                color: const Color(0xFFFF1744).withValues(alpha: 0.3),
                 blurRadius: 12,
               ),
             ],
@@ -153,7 +153,7 @@ class DashboardScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF1A1A1A),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.amber.withOpacity(0.3)),
+          border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
         ),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -175,7 +175,7 @@ class DashboardScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF1A1A1A),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.amber.withOpacity(0.3)),
+          border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
         ),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -195,9 +195,9 @@ class DashboardScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF00E676).withOpacity(0.1),
+        color: const Color(0xFF00E676).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF00E676).withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -225,7 +225,7 @@ class DashboardScreen extends StatelessWidget {
                 : 'RAW: ${provider.currentData.rawHex}',
             style: TextStyle(
               fontFamily: 'monospace',
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white.withValues(alpha: 0.5),
               fontSize: 11,
             ),
           ),
@@ -240,7 +240,7 @@ class DashboardScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         children: [
@@ -254,7 +254,7 @@ class DashboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(label,
-            style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
+            style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.5)),
           ),
         ],
       ),
@@ -267,7 +267,7 @@ class DashboardScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
         children: [
@@ -284,7 +284,7 @@ class DashboardScreen extends StatelessWidget {
                   provider.isTripActive
                       ? 'Data points being saved'
                       : 'Start recording your ride',
-                  style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
+                  style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.5)),
                 ),
               ],
             ),
@@ -304,13 +304,13 @@ class DashboardScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
                 color: provider.isTripActive
-                    ? const Color(0xFFFF1744).withOpacity(0.2)
-                    : const Color(0xFF00E676).withOpacity(0.2),
+                    ? const Color(0xFFFF1744).withValues(alpha: 0.2)
+                    : const Color(0xFF00E676).withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: provider.isTripActive
-                      ? const Color(0xFFFF1744).withOpacity(0.5)
-                      : const Color(0xFF00E676).withOpacity(0.5),
+                      ? const Color(0xFFFF1744).withValues(alpha: 0.5)
+                      : const Color(0xFF00E676).withValues(alpha: 0.5),
                 ),
               ),
               child: Row(

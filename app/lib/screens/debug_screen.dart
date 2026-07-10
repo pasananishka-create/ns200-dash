@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../providers/bike_provider.dart';
-import '../services/ble_service.dart';
 
 class DebugScreen extends StatelessWidget {
   const DebugScreen({super.key});
@@ -25,7 +25,7 @@ class DebugScreen extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
+                            color: Colors.white.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(Icons.arrow_back, color: Colors.white70),
@@ -51,13 +51,7 @@ class DebugScreen extends StatelessWidget {
                       ),
                     )
                   else ...[
-                    _buildSection(context, 'Service UUIDs', [
-                      '0020676e-6972-6565-6e69-676e4543544f (Engineering Ctrl)',
-                      '0010676e-6972-6565-6e69-676e4543544f (Engineering Cfg)',
-                      'f000ffd0-0451-4000-b000-000000000000 (TI Sensor)',
-                    ]),
-                    const SizedBox(height: 16),
-                    _buildReadSection(context, provider),
+                    _buildDiscoverSection(context, provider),
                     const SizedBox(height: 16),
                     _buildWriteSection(context, provider),
                     const SizedBox(height: 16),
@@ -72,136 +66,161 @@ class DebugScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSection(BuildContext context, String title, List<String> items) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
-          const SizedBox(height: 8),
-          ...items.map((item) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: Text(item,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.5),
-                fontSize: 11,
-                fontFamily: 'monospace',
-              ),
-            ),
-          )),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReadSection(BuildContext context, BikeProvider provider) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Read Characteristics',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
-          const SizedBox(height: 8),
-          _buildReadButton(context, '1120676e...  (Eng Ctrl)', '1120676e-6972-6565-6e69-676e4543544f', BleService.serviceEngineeringCtrl, BleService.charCtrlRead),
-          const SizedBox(height: 8),
-          _buildReadButton(context, '0a10676e...  (Eng Cfg)', '0a10676e-6972-6565-6e69-676e4543544f', BleService.serviceEngineeringCfg, BleService.charCfgRead),
-          const SizedBox(height: 8),
-          _buildReadButton(context, 'f000ffd1...  (TI Sensor)', 'f000ffd1-0451-4000-b000-000000000000', BleService.serviceTiSensor, BleService.charTiData),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReadButton(BuildContext context, String label, String charUuid, String serviceUuid, String characteristicUuid) {
-    return Consumer<BikeProvider>(
-      builder: (context, provider, _) {
-        return GestureDetector(
-          onTap: () async {
-            try {
-              final device = provider.bleService.device;
-              if (device == null) return;
-
-              final services = await device.discoverServices();
-              for (var svc in services) {
-                if (svc.uuid.toString() == serviceUuid) {
-                  for (var char in svc.characteristics) {
-                    if (char.uuid.toString() == characteristicUuid && char.properties.read) {
-                      final value = await char.read();
-                      final hex = value.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
-                      final ascii = value.map((b) => b >= 32 && b <= 126 ? String.fromCharCode(b) : '.').join();
-
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: const Color(0xFF1A1A1A),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('$label:', style: const TextStyle(fontSize: 12, color: Colors.white70)),
-                                const SizedBox(height: 4),
-                                Text('HEX: $hex',
-                                  style: const TextStyle(fontFamily: 'monospace', fontSize: 13, color: Color(0xFFFFEB3B))),
-                                Text('ASCII: $ascii',
-                                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Colors.white38)),
-                              ],
-                            ),
-                            duration: const Duration(seconds: 8),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        );
-                      }
-                      return;
-                    }
-                  }
-                }
-              }
-            } catch (e) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
-                );
-              }
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+  Widget _buildDiscoverSection(BuildContext context, BikeProvider provider) {
+    return Expanded(
+      child: FutureBuilder<List<BluetoothService>>(
+        future: provider.bleService.getServices(),
+        builder: (context, snapshot) {
+          final services = snapshot.data ?? [];
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFFF1744).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFFF1744).withOpacity(0.2)),
+              color: const Color(0xFF1A1A1A),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.download, size: 16, color: Color(0xFFFF1744)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(label,
-                    style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace')),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Services & Characteristics',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                    if (snapshot.connectionState == ConnectionState.waiting)
+                      const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                  ],
                 ),
-                const Icon(Icons.chevron_right, size: 16, color: Color(0xFFFF1744)),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: services.isEmpty
+                      ? const Center(child: Text('No services found',
+                          style: TextStyle(color: Colors.white38, fontSize: 12)))
+                      : ListView(
+                          children: services.map((svc) => _buildServiceTile(context, svc)).toList(),
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildServiceTile(BuildContext context, BluetoothService svc) {
+    final svcId = svc.uuid.toString();
+    final chars = svc.characteristics;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(svcId,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 11,
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.w600,
+            )),
+          const SizedBox(height: 4),
+          ...chars.map((char) => _buildCharTile(context, char, svcId)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCharTile(BuildContext context, BluetoothCharacteristic char, String svcId) {
+    final charId = char.uuid.toString();
+    final props = <String>[];
+    if (char.properties.read) props.add('R');
+    if (char.properties.write) props.add('W');
+    if (char.properties.notify) props.add('N');
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, top: 2, bottom: 2),
+      child: GestureDetector(
+        onTap: char.properties.read
+            ? () => _readChar(context, svcId, charId)
+            : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(charId,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 10,
+                    fontFamily: 'monospace',
+                  )),
+              ),
+              const SizedBox(width: 8),
+              Text(props.join('/'),
+                style: TextStyle(
+                  color: const Color(0xFF00E676),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                )),
+              if (char.properties.read) ...[
+                const SizedBox(width: 6),
+                const Icon(Icons.download, size: 12, color: Colors.white38),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _readChar(BuildContext context, String svcId, String charId) async {
+    final provider = context.read<BikeProvider>();
+    try {
+      final data = await provider.bleService.readCharacteristic(svcId, charId);
+      if (data == null || data.rawBytes.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No data or characteristic not readable')),
+          );
+        }
+        return;
+      }
+      final hex = data.rawHex;
+      final ascii = data.rawBytes.map((b) => b >= 32 && b <= 126 ? String.fromCharCode(b) : '.').join();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFF1A1A1A),
+            duration: const Duration(seconds: 8),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(charId, style: const TextStyle(fontSize: 11, color: Colors.white70, fontFamily: 'monospace')),
+                const SizedBox(height: 4),
+                Text('HEX: $hex',
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 13, color: Color(0xFFFFEB3B))),
+                Text('ASCII: $ascii',
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Colors.white38)),
               ],
             ),
           ),
         );
-      },
-    );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildWriteSection(BuildContext context, BikeProvider provider) {
@@ -211,7 +230,7 @@ class DebugScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,12 +253,12 @@ class DebugScreen extends StatelessWidget {
             controller: controller,
             decoration: InputDecoration(
               hintText: 'e.g. 01 02 FF',
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), fontFamily: 'monospace'),
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontFamily: 'monospace'),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.03),
+              fillColor: Colors.white.withValues(alpha: 0.03),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
@@ -294,7 +313,7 @@ class DebugScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,9 +325,9 @@ class DebugScreen extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.4),
+              color: Colors.black.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFFFEB3B).withOpacity(0.3)),
+              border: Border.all(color: const Color(0xFFFFEB3B).withValues(alpha: 0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,7 +345,7 @@ class DebugScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${data.rawBytes.length} bytes',
-                  style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11),
                 ),
               ],
             ),
@@ -353,7 +372,7 @@ class DebugScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+          Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
           Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace')),
         ],
       ),

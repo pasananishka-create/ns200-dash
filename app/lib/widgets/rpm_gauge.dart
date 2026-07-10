@@ -87,7 +87,7 @@ class _RpmGaugePainter extends CustomPainter {
     canvas.drawCircle(center, radius * 1.15, bgPaint);
 
     final borderPaint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
+      ..color = Colors.white.withValues(alpha: 0.05)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
     canvas.drawCircle(center, radius * 1.15, borderPaint);
@@ -99,7 +99,7 @@ class _RpmGaugePainter extends CustomPainter {
 
     // Background arc
     final bgArc = Paint()
-      ..color = Colors.white.withOpacity(0.06)
+      ..color = Colors.white.withValues(alpha: 0.06)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 12
       ..strokeCap = StrokeCap.round;
@@ -132,7 +132,7 @@ class _RpmGaugePainter extends CustomPainter {
   void _drawTicks(Canvas canvas, Offset center, double radius) {
     const totalTicks = 10;
     final tickPaint = Paint()
-      ..color = Colors.white.withOpacity(0.15)
+      ..color = Colors.white.withValues(alpha: 0.15)
       ..strokeWidth = 2;
 
     for (int i = 0; i <= totalTicks; i++) {
@@ -189,7 +189,7 @@ class _RpmGaugePainter extends CustomPainter {
       text: TextSpan(
         text: 'RPM',
         style: TextStyle(
-          color: Colors.white.withOpacity(0.3),
+          color: Colors.white.withValues(alpha: 0.3),
           fontSize: 11,
           letterSpacing: 2,
         ),

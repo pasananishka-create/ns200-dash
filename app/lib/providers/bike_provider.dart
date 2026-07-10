@@ -18,6 +18,7 @@ class BikeProvider extends ChangeNotifier {
   List<Trip> _trips = [];
   int? _activeTripId;
   StreamSubscription? _dataSubscription;
+  StreamSubscription? _connectionStateSub;
   Timer? _pollTimer;
   String _scanMessage = '';
 
@@ -98,6 +99,17 @@ class BikeProvider extends ChangeNotifier {
   }
 
   void _startDataPolling() {
+    // Listen to connection state changes (handle unexpected disconnects)
+    _connectionStateSub?.cancel();
+    _connectionStateSub = _bleService.connectionStateStream.listen((state) {
+      if (state == BluetoothConnectionState.disconnected &&
+          _connectionStatus == ConnectionStatus.connected) {
+        _pollTimer?.cancel();
+        _connectionStatus = ConnectionStatus.disconnected;
+        notifyListeners();
+      }
+    });
+
     // Listen to BLE notification stream for real-time data
     _dataSubscription?.cancel();
     _dataSubscription = _bleService.dataStream.listen((data) {
@@ -151,6 +163,7 @@ class BikeProvider extends ChangeNotifier {
 
   Future<void> disconnect() async {
     _pollTimer?.cancel();
+    _connectionStateSub?.cancel();
     if (_activeTripId != null) {
       await stopTrip();
     }
@@ -163,6 +176,7 @@ class BikeProvider extends ChangeNotifier {
   void dispose() {
     _pollTimer?.cancel();
     _dataSubscription?.cancel();
+    _connectionStateSub?.cancel();
     _bleService.dispose();
     super.dispose();
   }
