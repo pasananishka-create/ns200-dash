@@ -34,12 +34,32 @@ class BikeProvider extends ChangeNotifier {
     _discoveredDevices.clear();
     notifyListeners();
 
-    final results = await _bleService.scanForBike(timeout: const Duration(seconds: 15));
-    _discoveredDevices.addAll(results);
+    try {
+      // 1. Check Bluetooth is on
+      final btOn = await _bleService.isBluetoothOn();
+      if (!btOn) {
+        _connectionStatus = ConnectionStatus.disconnected;
+        notifyListeners();
+        return;
+      }
 
-    if (results.isNotEmpty) {
-      await connectToDevice(results.first.device);
-    } else {
+      // 2. Scan for ALL nearby BLE devices (flutter_blue_plus handles permission request)
+      final results = await _bleService.scanForDevices(timeout: const Duration(seconds: 15));
+      _discoveredDevices.addAll(results);
+
+      // 3. If we found our target bike, auto-connect
+      final bike = results.cast<ScanResult?>().firstWhere(
+        (r) => r != null && BleService.isTargetDevice(r),
+        orElse: () => null,
+      );
+
+      if (bike != null) {
+        await connectToDevice(bike.device);
+      } else {
+        _connectionStatus = ConnectionStatus.disconnected;
+        notifyListeners();
+      }
+    } catch (e) {
       _connectionStatus = ConnectionStatus.disconnected;
       notifyListeners();
     }

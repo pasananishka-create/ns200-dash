@@ -32,7 +32,32 @@ class BleService {
 
   BluetoothDevice? get device => _device;
 
-  Future<List<ScanResult>> scanForBike({Duration timeout = const Duration(seconds: 15)}) async {
+  /// Check if a scan result matches our target bike name/pattern
+  static bool isTargetDevice(ScanResult r) {
+    if (r.device.platformName.isNotEmpty &&
+        r.device.platformName.toLowerCase() == targetDeviceName) {
+      return true;
+    }
+    if (r.advertisementData.advName.isNotEmpty &&
+        r.advertisementData.advName.toLowerCase().contains('pulsar')) {
+      return true;
+    }
+    return false;
+  }
+
+  /// Check if Bluetooth is currently enabled.
+  Future<bool> isBluetoothOn() async {
+    try {
+      final state = await FlutterBluePlus.adapterState.first;
+      return state == BluetoothAdapterState.on;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Scan for ALL nearby BLE devices, stopping early if [targetDeviceName] is found.
+  /// Returns the full list of discovered devices (not filtered).
+  Future<List<ScanResult>> scanForDevices({Duration timeout = const Duration(seconds: 15)}) async {
     _isScanning = true;
     final results = <ScanResult>[];
     final completer = Completer<void>();
@@ -44,14 +69,13 @@ class BleService {
 
       sub = FlutterBluePlus.scanResults.listen((list) {
         for (final r in list) {
-          if (r.device.platformName == targetDeviceName ||
-              r.advertisementData.advName.toLowerCase().contains('pulsar')) {
-            if (!results.contains(r)) {
-              results.add(r);
-            }
+          final id = r.device.remoteId;
+          if (!results.any((existing) => existing.device.remoteId == id)) {
+            results.add(r);
           }
         }
-        if (results.any((r) => r.device.platformName == targetDeviceName)) {
+        // Early stop as soon as we spot our target bike
+        if (results.any(isTargetDevice)) {
           if (!completer.isCompleted) completer.complete();
         }
       });
